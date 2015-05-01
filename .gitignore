@@ -1,3 +1,4 @@
+.DS_Store
 target/
 .cargo
 config.stamp
@@ -8,3 +9,4 @@ src/registry/target
 src/registry/Cargo.lock
 rustc
 *.racertmp
+lazyfoo/
