@@ -1,5 +1,5 @@
 [root]
-name = "lesson02"
+name = "lesson03"
 version = "0.1.0"
 dependencies = [
  "sdl2 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
