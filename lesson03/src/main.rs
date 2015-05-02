@@ -58,9 +58,6 @@ fn main() {
     // Blit the image to the window.  Note that in this example this happens outside
     // the game loop, in a real game this would happen inside.
     let mut context = renderer.drawer();
-    context.clear();
-    context.copy(&image_texture, None, None);
-    context.present();
 
     // running is 'mut' because we will want to 'flip' it to false when we're ready
     // to exit the game loop.
@@ -81,5 +78,9 @@ fn main() {
                 _ => {}
             }
         }
+        // Clear and render the texture each pass through the loop
+        context.clear();
+        context.copy(&image_texture, None, None);
+        context.present();
     }
 }
