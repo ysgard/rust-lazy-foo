@@ -2,7 +2,7 @@ extern crate sdl2;
 
 use sdl2::Sdl;
 use sdl2::video::{Window, WindowPos, OPENGL};
-use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer};
+use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer, Texture};
 use sdl2::event::Event;
 use sdl2::surface::{Surface};
 
@@ -14,16 +14,15 @@ const X_IMAGE: &'static str = "x.bmp";
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
 fn init() -> (Sdl, Window)  {
-    let sdl_context = sdl2::init(sdl2::INIT_VIDEO).unwrap();
-    let window = match Window::new(&sdl_context, "SDL Tutorial",
+    let sdl = sdl2::init(sdl2::INIT_VIDEO).unwrap();
+    let win = match Window::new(&sdl, "SDL Tutorial",
                       WindowPos::PosCentered,
                       WindowPos::PosCentered,
                       WIDTH, HEIGHT, OPENGL) {
         Ok(window) => window,
         Err(err)   => panic!("Failed to create Window!: {}", err)
     };
-    (sdl_context, window)
-    
+    (sdl, win)
 }
 
 /// Take a string describing a path and use it to load
@@ -36,11 +35,22 @@ fn load_image(path: &'static str) -> Surface {
     }
 }
 
+/// Take a string describing a path and use it to
+/// load an image, and return its texture
+fn load_texture(path: &'static str, renderer: &Renderer) -> Texture {
+    let image = load_image(path);
+    match renderer.create_texture_from_surface(&image) {
+        Ok(tex)    => tex,
+        Err(err)   => panic!("Could not load texture: {}", err)
+    }
+}
+
 
 fn main() {
 
     // Initialize SDL2
     let (sdl_context, window) = init();
+    
     let mut renderer = match Renderer::from_window(window, RenderDriverIndex::Auto,
                                                    ACCELERATED) {
         Ok(renderer) => renderer,
@@ -48,12 +58,8 @@ fn main() {
     };
     
     // Load the image
-    let image_surface = load_image(X_IMAGE);
-    // Render it to a texture
-    let image_texture = match renderer.create_texture_from_surface(&image_surface) {
-        Ok(tex)   => tex,
-        Err(err)  => panic!("Could not convert image surface to texture: {}", err)
-    };
+    let image_texture = load_texture(X_IMAGE, &renderer);
+
 
     // Blit the image to the window.  Note that in this example this happens outside
     // the game loop, in a real game this would happen inside.
