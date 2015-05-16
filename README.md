@@ -14,7 +14,7 @@ but I think I used a few unstable features here and there.
 
 2. [The SDL2 Development libraries](https://www.libsdl.org/download-2.0.php).  On OS X, you can use Homebrew:
 
-  brew install sdl2
+    brew install sdl2
 
 
 ## Compiling and Running the Examples
@@ -22,7 +22,7 @@ but I think I used a few unstable features here and there.
 Once you have a version of rust installed, just go into any of the
 lesson folders and run
 
-  cargo run
+    cargo run
 
 
 
