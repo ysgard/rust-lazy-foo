@@ -1,0 +1,7 @@
+[package]
+name = "lesson15"
+version = "0.1.0"
+authors = ["ysgard <ysgard@gmail.com>"]
+[dependencies]
+sdl2 = "0.2.3"
+sdl2_image = "0.2.1"
