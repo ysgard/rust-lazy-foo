@@ -18,7 +18,7 @@ and the truetype library, [SDL_TTF 2.0](https://www.libsdl.org/projects/SDL_ttf/
 
 On OS X, you can use Homebrew:
 
-		brew install sdl2
+	brew install sdl2
     brew install sdl2_image
     brew install sdl2_ttf
 
