@@ -1,0 +1,17 @@
+[package]
+name = "lazy-foo"
+version = "0.1.0"
+authors = ["Ysgard <ysgard@gmail.com>"]
+
+
+[[bin]]
+name = "lesson01"
+path = "lesson01/main.rs"
+
+[[bin]]
+name = "lesson02"
+path = "lesson02/main.rs"
+
+[dependencies]
+sdl2 = "*"
+sdl2_image = "*"
