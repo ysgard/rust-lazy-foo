@@ -12,19 +12,6 @@ the Rust wrappers kindly provided by the following awesome people:
 + SDL2_ttf:
 [andelf's rust-sdl2_ttf](https://github.com/andelf/rust-sdl2_ttf)
 
-## Building and Running the Examples
-
-To build all the examples, run
-
-```
-cargo build
-```
-
-To run a specific example, run:
-
-```
-cargo run --bin lesson<XX>
-```
 
 ## Tutorial Index
 
@@ -107,14 +94,33 @@ On OS X, you can use Homebrew:
     brew install sdl2_image
     brew install sdl2_ttf
 
+On Fedora:
+
+    sudo dnf install SDL2-devel SDL2_ttf-devel SDL2_image-devel
+    
+On RedHat/Centos:
+
+    sudo yum install SDL2-devel SDL2_ttf-devel SDL2_image-devel
+
+
 For other platforms, refer to your existing package documentation.
 
 ## Compiling and Running the Examples
 
-Once you have a version of rust installed, just go into any of the
-lesson folders and run
+Once you have a version of rust installed, you can build all the
+examples with the command
 
-    cargo run
+```
+cargo build
+```
+
+To run a specific lesson, run
+
+```
+cargo run --bin lesson<NN>
+```
+
+Where <NN> is the # of the lesson.
 
 
 

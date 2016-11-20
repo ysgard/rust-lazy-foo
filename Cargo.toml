@@ -11,6 +11,10 @@ path = "lesson01/main.rs"
 name = "lesson02"
 path = "lesson02/main.rs"
 
+[[bin]]
+name = "lesson03"
+path = "lesson03/main.rs"
+
 [dependencies]
 sdl2 = "*"
 sdl2_image = "*"
