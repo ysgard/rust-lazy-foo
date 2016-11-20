@@ -68,7 +68,7 @@ fn main() {
     // Get a handle to the SDL2 event pump
     let mut event_pump = match sdl_context.event_pump() {
         Ok(event_pump) => event_pump,
-        Err(err)      => panic!("Could not obtain event pump: {}", err)
+        Err(err)       => panic!("Could not obtain event pump: {}", err)
     };
     
     // game loop
@@ -83,7 +83,7 @@ fn main() {
                 _ => {}
             }
         }
-        // Clear and render the texture each pass through the loop
+        // render the texture each pass through the loop
         renderer.clear();
         renderer.copy(&image_texture, None, None).unwrap();
         renderer.present();
