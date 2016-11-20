@@ -12,6 +12,20 @@ the Rust wrappers kindly provided by the following awesome people:
 + SDL2_ttf:
 [andelf's rust-sdl2_ttf](https://github.com/andelf/rust-sdl2_ttf)
 
+## Building and Running the Examples
+
+To build all the examples, run
+
+```
+cargo build
+```
+
+To run a specific example, run:
+
+```
+cargo run --bin lesson<XX>
+```
+
 ## Tutorial Index
 
 I plan to port most of the provided tutorials, though for some I can't
