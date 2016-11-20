@@ -29,7 +29,7 @@ fn main() {
     let mut renderer = window.renderer().build().unwrap();
 
     // Load the image as a surface - if we can't load the image, we want to know why
-    let image_surface = match Surface::load_bmp(&Path::new("hello_world.bmp")) {
+    let image_surface = match Surface::load_bmp(&Path::new("resources/hello_world.bmp")) {
         Ok(surface) => surface,
         Err(err)    => panic!("Could not load image: {}", err)
     };

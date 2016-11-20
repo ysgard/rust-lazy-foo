@@ -11,3 +11,5 @@ rustc
 *.racertmp
 lazyfoo/
 Cargo.lock
+target
+Cargo.lock
