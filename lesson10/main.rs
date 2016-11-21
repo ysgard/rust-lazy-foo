@@ -4,9 +4,9 @@ extern crate sdl2_image;
 use std::path::Path;
 
 use sdl2::Sdl;
-use sdl2::video::{Window, WindowPos, OPENGL};
-use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer, RenderDrawer, Texture};
-use sdl2::surface::{Surface};
+use sdl2::video::Window;
+use sdl2::render::{Renderer, Texture};
+use sdl2::surface::Surface;
 use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
@@ -14,16 +14,19 @@ use sdl2::rect::{Rect, Point};
 
 use sdl2_image::{LoadSurface, INIT_PNG};
 
-const WIDTH:  i32 = 640;
-const HEIGHT: i32 = 480;
+const WIDTH:  u32 = 640;
+const HEIGHT: u32 = 480;
+
+const FOO_IMG: &'static str = "resources/foo.png";
+const BG_IMG: &'static str = "resources/background.png";
 
 // Create a struct that will track texture data
 struct LTexture {
     // The actual texture.
     texture: Texture,
     // Image dimensions
-    width: i32,
-    height: i32
+    width: u32,
+    height: u32
 }
 
 // Implement a few functions for the Texture struct
@@ -56,7 +59,7 @@ impl LTexture {
     // Load a texture from a file
     fn new_from_file(ren: &Renderer, path: &std::path::Path) -> LTexture {
         // Load the surface first, so we can set the color key
-        let surface = match Surface::from_file(path) {
+        let mut surface = match Surface::from_file(path) {
             Ok(surface) => surface,
             Err(err)    => panic!("Could not load surface: {}", err)
         };
@@ -74,14 +77,14 @@ impl LTexture {
     }
 
     // Renders a texture to a given point using a provided renderer
-    fn render_to(&self, context: &mut RenderDrawer, p: Option<Point>) {
-        context.copy(&self.texture,
+    fn render_to(&self, renderer: &mut Renderer, p: Option<Point>) {
+        renderer.copy(&self.texture,
                      None,
-                     Some(Rect { x: match p { Some(p) => p.x, _ => 0 },
-                                 y: match p { Some(p) => p.y, _ => 0 },
-                                 w: self.width,
-                                 h: self.height
-                     }));
+                     Some(Rect::new(match p { Some(p) => p.x(), _ => 0 },
+                                    match p { Some(p) => p.y(), _ => 0 },
+                                    self.width,
+                                    self.height)))
+            .unwrap();
     }
 }
         
@@ -95,16 +98,17 @@ impl LTexture {
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
 fn init() -> (Sdl, Window)  {
-    let sdl = sdl2::init(sdl2::INIT_VIDEO).unwrap();
-    let win = match Window::new(&sdl, "SDL Tutorial",
-                      WindowPos::PosCentered,
-                      WindowPos::PosCentered,
-                      WIDTH, HEIGHT, OPENGL) {
-        Ok(window) => window,
-        Err(err)   => panic!("Failed to create Window!: {}", err)
-    };
+    let sdl = sdl2::init().unwrap();
+    let video = sdl.video().unwrap();
+    let win = match video.window("SDL Tutorial 10", WIDTH, HEIGHT)
+        .position_centered()
+        .opengl()
+        .build() {
+            Ok(window) => window,
+            Err(err)   => panic!("Failed to create Window!: {}", err)
+        };
 
-    sdl2_image::init(INIT_PNG);
+    sdl2_image::init(INIT_PNG).unwrap();
     
     (sdl, win)
 }
@@ -116,27 +120,22 @@ fn main() {
     let (sdl_context, window) = init();
 
     // obtain the renderer
-    let mut renderer = match Renderer::from_window(window, RenderDriverIndex::Auto,
-                                                   ACCELERATED) {
+    let mut renderer = match window.renderer().build() {
         Ok(renderer) => renderer,
         Err(err)     => panic!("Could not obtain renderer: {}", err)
     };
 
     // Create the textures we are going to use.
-    let foo_texture = LTexture::new_from_file(&renderer, Path::new("foo.png"));
-    let background_texture = LTexture::new_from_file(&renderer, Path::new("background.png"));
-            
-    let mut context = renderer.drawer();
+    let foo_texture = LTexture::new_from_file(&renderer, Path::new(FOO_IMG));
+    let background_texture = LTexture::new_from_file(&renderer, Path::new(BG_IMG));
 
     // Set renderer color using the context
-    context.set_draw_color(Color::RGB(0, 0, 0));
+    renderer.set_draw_color(Color::RGB(0, 0, 0));
     
-    // running is 'mut' because we will want to 'flip' it to false when we're ready
-    // to exit the game loop.
     let mut running: bool = true;
 
     // Get a handle to the SDL2 event pump
-    let mut event_pump = sdl_context.event_pump();
+    let mut event_pump = sdl_context.event_pump().unwrap();
     
     // game loop
     while running {
@@ -151,9 +150,9 @@ fn main() {
             }
         }
         // Clear and render the texture each pass through the loop
-        context.clear();
-        background_texture.render_to(&mut context, None);
-        foo_texture.render_to(&mut context, Some(Point { x: 240, y: 190 }));
-        context.present();
+        renderer.clear();
+        background_texture.render_to(&mut renderer, None);
+        foo_texture.render_to(&mut renderer, Some(Point::new(240, 190)));
+        renderer.present();
     }
 }
