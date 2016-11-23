@@ -4,26 +4,28 @@ extern crate sdl2_image;
 use std::path::Path;
 
 use sdl2::Sdl;
-use sdl2::video::{Window, WindowPos, OPENGL};
-use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer, RenderDrawer, Texture};
-use sdl2::surface::{Surface};
+use sdl2::video::Window;
+use sdl2::render::{Renderer, Texture};
+use sdl2::surface::Surface;
 use sdl2::event::Event;
-use sdl2::keycode::KeyCode;
+use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
-use sdl2::rect::{Rect};
+use sdl2::rect::Rect;
 
 use sdl2_image::{LoadSurface, INIT_PNG};
 
-const WIDTH:  i32 = 640;
-const HEIGHT: i32 = 480;
+const WIDTH:  u32 = 640;
+const HEIGHT: u32 = 480;
+
+const IMG_COLORS: &'static str = "resources/colors.png";
 
 // Create a struct that will track texture data
 struct LTexture {
     // The actual texture.
     texture: Texture,
     // Image dimensions
-    width: i32,
-    height: i32
+    width: u32,
+    height: u32
 }
 
 // Implement a few functions for the Texture struct
@@ -58,7 +60,7 @@ impl LTexture {
     // Load a texture from a file
     fn new_from_file(ren: &Renderer, path: &Path) -> LTexture {
         // Load the surface first, so we can set the color key
-        let surface = match Surface::from_file(path) {
+        let mut surface = match Surface::from_file(path) {
             Ok(surface) => surface,
             Err(err)    => panic!("Could not load surface: {}", err)
         };
@@ -77,24 +79,27 @@ impl LTexture {
 
     // Renders a texture to a given point using a provided renderer
     fn render_to(&self,
-                 context: &mut RenderDrawer,
+                 renderer: &mut Renderer,
                  x: i32,
                  y: i32,
                  clip: Option<Rect>) {
         let clip_rect = match clip {
             Some(rect) => rect,
-            None       => Rect {x: 0, y: 0, w: self.width, h: self.height }
+            None       => Rect::new(0, 0, self.width, self.height)
         };
-        context.copy(&self.texture,
+        renderer.copy(&self.texture,
                      Some(clip_rect),
-                     Some(Rect { x: x, y: y, w: clip_rect.w, h: clip_rect.h}) );            
+                     Some(Rect::new(x, y,
+                                    clip_rect.width(),
+                                    clip_rect.height())))
+            .unwrap();            
     }
 
     // Modulate the LTexture using a Color - this will 'tint' the texture
     // Note that LTextures are immutable, so we have to create a new one
     // and return it - we can't mutate ourselves.
     fn set_color(&mut self, color: Color) {
-        let (r, g, b) = color.get_rgb();
+        let (r, g, b) = color.rgb();
         self.texture.set_color_mod(r, g, b);
     }
 }
@@ -105,16 +110,17 @@ impl LTexture {
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
 fn init() -> (Sdl, Window)  {
-    let sdl = sdl2::init(sdl2::INIT_VIDEO).unwrap();
-    let win = match Window::new(&sdl, "SDL Tutorial",
-                      WindowPos::PosCentered,
-                      WindowPos::PosCentered,
-                      WIDTH, HEIGHT, OPENGL) {
-        Ok(window) => window,
-        Err(err)   => panic!("Failed to create Window!: {}", err)
-    };
+    let sdl = sdl2::init().unwrap();
+    let video = sdl.video().unwrap();
+    let win = match video.window("SDL Tutorial 12", WIDTH, HEIGHT)
+        .position_centered()
+        .opengl()
+        .build() {
+            Ok(window) => window,
+            Err(err)   => panic!("Failed to create Window!: {}", err)
+        };
 
-    sdl2_image::init(INIT_PNG);
+    sdl2_image::init(INIT_PNG).unwrap();
     
     (sdl, win)
 }
@@ -125,24 +131,19 @@ fn main() {
     let (sdl_context, window) = init();
 
     // obtain the renderer
-    let mut renderer = match Renderer::from_window(window,
-                                                   RenderDriverIndex::Auto,
-                                                   ACCELERATED) {
+    let mut renderer = match window.renderer().build() {
         Ok(renderer) => renderer,
         Err(err)     => panic!("Could not obtain renderer: {}", err)
     };
 
     // Create the textures we are going to use.
-    let mut texture = LTexture::new_from_file(&renderer, Path::new("colors.png"));
+    let mut texture = LTexture::new_from_file(&renderer,
+                                              Path::new(IMG_COLORS));
             
-    let mut context = renderer.drawer();
-    
-    // running is 'mut' because we will want to 'flip' it to false when we're ready
-    // to exit the game loop.
     let mut running: bool = true;
 
     // Get a handle to the SDL2 event pump
-    let mut event_pump = sdl_context.event_pump();
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
     // Create the Color we're going to use to modulate the texture
     // As we're allowing the user to alter this tint, we will make
@@ -160,52 +161,59 @@ fn main() {
                 Event::Quit {..} => {
                     running = false
                 },
+                Event::KeyDown { keycode: k, ..} => match k {
                 // The keys 'q', 'w' and 'e' increase the red, green and blue of the tint,
                 // the keys 'a', 's' and 'd' decrease them.  We check to make sure we don't
-                // overflow the 1-byte value for each color channel.
-                Event::KeyDown { keycode: KeyCode::Q, .. } => {
-                    if red_tint < 224 { 
-                        red_tint += 32;
-                    }
-                },
-                Event::KeyDown { keycode: KeyCode::W, .. } => {
-                    if green_tint < 224 {
-                        green_tint += 32;
-                    }
-                },
-                Event::KeyDown { keycode: KeyCode::E, ..} => {
-                    if blue_tint < 224 {  
-                        blue_tint += 32;
-                    }
-                },
-                Event::KeyDown { keycode: KeyCode::A, ..} => {
-                    if red_tint > 32 {
-                        red_tint -= 32;
-                    }
-                },
-                Event::KeyDown { keycode: KeyCode::S, ..} => {
-                    if green_tint > 32 {
-                        green_tint -= 32;
-                    }
-                },
-                Event::KeyDown { keycode: KeyCode::D, ..} => {
-                    if blue_tint > 32 {
-                        blue_tint -= 32;
-                    }
+                    // overflow the 1-byte value for each color channel.
+                    Some(Keycode::Escape) => {
+                        running = false
+                    },
+                    Some(Keycode::Q) => {
+                        if red_tint < 224 { 
+                            red_tint += 32;
+                        }
+                    },
+                    Some(Keycode::W) => {
+                        if green_tint < 224 {
+                            green_tint += 32;
+                        }
+                    },
+                    Some(Keycode::E) => {
+                        if blue_tint < 224 {  
+                            blue_tint += 32;
+                        }
+                    },
+                    Some(Keycode::A) => {
+                        if red_tint > 32 {
+                            red_tint -= 32;
+                        }
+                    },
+                    Some(Keycode::S) => {
+                        if green_tint > 32 {
+                            green_tint -= 32;
+                        }
+                    },
+                    Some(Keycode::D) => {
+                        if blue_tint > 32 {
+                            blue_tint -= 32;
+                        }
+                    },
+                    Some(_) => {},
+                    None => {}
                 },
                 _ => {}
             }
         }
         // Clear and render the texture each pass through the loop
-        context.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
-        context.clear();
+        renderer.set_draw_color(Color::RGB(0x0, 0x0, 0x0));
+        renderer.clear();
 
         // Tint the texture
         texture.set_color(Color::RGB(red_tint, green_tint, blue_tint));
         // Blit the texture
-        texture.render_to(&mut context, 0, 0, None);
+        texture.render_to(&mut renderer, 0, 0, None);
 
         // Update the screen
-        context.present();
+        renderer.present();
     }
 }
