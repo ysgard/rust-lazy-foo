@@ -4,29 +4,37 @@ extern crate sdl2_image;
 use std::path::Path;
 
 use sdl2::Sdl;
-use sdl2::video::{Window, WindowPos, OPENGL};
-use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer, RenderDrawer, Texture};
-use sdl2::surface::{Surface};
+use sdl2::video::Window;
+use sdl2::render::{Renderer, Texture};
+use sdl2::surface::Surface;
 use sdl2::event::Event;
 use sdl2::pixels::Color;
-use sdl2::rect::{Rect};
+use sdl2::rect::Rect;
+use std::time::Duration;
 
 use sdl2_image::{LoadSurface, INIT_PNG};
 
-const WIDTH:  i32 = 640;
-const HEIGHT: i32 = 480;
+const WIDTH:  u32 = 640;
+const HEIGHT: u32 = 480;
+
+const FOO_IMG: &'static str = "resources/foo2.png";
 
 // usize so we can mod the array index with it
 // without having to cast.
 const WALKING_FRAMES: usize = 4;
+
+// Note: Starting with this tutorial we will eschew using either
+// .unwrap() or matching on errors, instead we will use
+// .expect(error_string), which essentially works like an unwrap,
+// but will display the error_string as well as panicking.
 
 // Create a struct that will track texture data
 struct LTexture {
     // The actual texture.
     texture: Texture,
     // Image dimensions
-    width: i32,
-    height: i32
+    width: u32,
+    height: u32
 }
 
 // Implement a few functions for the Texture struct
@@ -57,48 +65,45 @@ impl LTexture {
         }
     }
 
-    // create a copy of 
-
     // Load a texture from a file
-    fn new_from_file(ren: &Renderer, path: &Path) -> LTexture {
+    fn new_from_file(renderer: &Renderer, path: &Path) -> LTexture {
         // Load the surface first, so we can set the color key
-        let surface = match Surface::from_file(path) {
-            Ok(surface) => surface,
-            Err(err)    => panic!("Could not load surface: {}", err)
-        };
-
+        let mut surface = Surface::from_file(path)
+            .expect("Could not load surface from path!");
         // Now set the color key on the surface
-        surface.set_color_key(true, Color::RGB(0, 0xff, 0xff)).unwrap();
+        surface.set_color_key(true, Color::RGB(0, 0xff, 0xff))
+            .expect("Could not set color key on the surface!");
 
         // Convert the surface to a texture and pass it to
         // LTexture::new to be wrapped
-        let tex = match ren.create_texture_from_surface(&surface) {
-            Ok(texture) => texture,
-            Err(err)    => panic!("Could not convert surface to texture: {}", err)
-        };
+        let tex = renderer.create_texture_from_surface(&surface)
+            .expect("Could not create texture from the surface!");
         LTexture::new(tex)
     }
 
     // Renders a texture to a given point using a provided renderer
     fn render_to(&self,
-                 context: &mut RenderDrawer,
+                 renderer: &mut Renderer,
                  x: i32,
                  y: i32,
                  clip: Option<Rect>) {
         let clip_rect = match clip {
             Some(rect) => rect,
-            None       => Rect {x: 0, y: 0, w: self.width, h: self.height }
+            None       => Rect::new(0, 0, self.width, self.height) 
         };
-        context.copy(&self.texture,
+        renderer.copy(&self.texture,
                      Some(clip_rect),
-                     Some(Rect { x: x, y: y, w: clip_rect.w, h: clip_rect.h}) );            
+                      Some(Rect::new(x, y,
+                                     clip_rect.width(),
+                                     clip_rect.height())))
+            .expect("Could not copy texture to the render target!");            
     }
 
     // Modulate the LTexture using a Color - this will 'tint' the texture
     // Note that LTextures are immutable, so we have to create a new one
     // and return it - we can't mutate ourselves.
     fn set_color(&mut self, color: Color) {
-        let (r, g, b) = color.get_rgb();
+        let (r, g, b) = color.rgb();
         self.texture.set_color_mod(r, g, b);
     }
 
@@ -114,16 +119,15 @@ impl LTexture {
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
 fn init() -> (Sdl, Window)  {
-    let sdl = sdl2::init(sdl2::INIT_VIDEO).unwrap();
-    let win = match Window::new(&sdl, "SDL Tutorial",
-                      WindowPos::PosCentered,
-                      WindowPos::PosCentered,
-                      WIDTH, HEIGHT, OPENGL) {
-        Ok(window) => window,
-        Err(err)   => panic!("Failed to create Window!: {}", err)
-    };
+    let sdl = sdl2::init().expect("Could not initialize SDL!");
+    let video = sdl.video().expect("Could not acquire the video context!");
+    let win = video.window("SDL Tutorial 14", WIDTH, HEIGHT)
+        .position_centered()
+        .opengl()
+        .build()
+        .expect("Could not create window!");
 
-    sdl2_image::init(INIT_PNG);
+    sdl2_image::init(INIT_PNG).expect("Could not initialize sdl2_image!");
     
     (sdl, win)
 }
@@ -133,14 +137,14 @@ fn init() -> (Sdl, Window)  {
 // We want to avoid the use of global variables (it's not really
 // a Rust, or functional, idiom) so we return a tuple containing
 // the data
-fn load_media(ren: &Renderer) ->
+fn load_media(renderer: &Renderer) ->
     (LTexture, [Rect; 4]) {
         // Return the teuple
-        ( LTexture::new_from_file(ren, Path::new("foo.png")),
-          [ Rect { x: 0, y: 0, w: 64, h: 205 },
-            Rect { x: 64, y: 0, w: 64, h: 205 },
-            Rect { x: 128, y: 0, w: 64, h: 205 },
-            Rect { x: 196, y: 0, w: 64, h: 205 } ] )
+        ( LTexture::new_from_file(renderer, Path::new(FOO_IMG)),
+          [ Rect::new(0, 0, 64, 205),
+            Rect::new(64, 0, 64, 205),
+            Rect::new(128, 0, 64, 205),
+            Rect::new(196, 0, 64, 205) ] )
 }
 
 fn main() {
@@ -149,23 +153,16 @@ fn main() {
     let (sdl_context, window) = init();
 
     // obtain the renderer
-    let mut renderer = match Renderer::from_window(window,
-                                                   RenderDriverIndex::Auto,
-                                                   ACCELERATED) {
-        Ok(renderer) => renderer,
-        Err(err)     => panic!("Could not obtain renderer: {}", err)
-    };
+    let mut renderer = window.renderer().build()
+        .expect("Could not obtain renderer from window!");
 
     let (sprite_sheet, clips) = load_media(&renderer);
             
-    let mut context = renderer.drawer();
-    
-    // running is 'mut' because we will want to 'flip' it to false when
-    // we're ready to exit the game loop.
     let mut running: bool = true;
 
     // Get a handle to the SDL2 event pump
-    let mut event_pump = sdl_context.event_pump();
+    let mut event_pump = sdl_context.event_pump()
+        .expect("Could not obtain event_pump!");
 
     // Set current frame to 0
     let mut frame: usize = 0;
@@ -182,19 +179,19 @@ fn main() {
                 _ => {}
             }
         }
-        // Clear and render the texture each pass through the loop
-        context.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
-        context.clear();
+        // Clear and render the texture each ass through the loop
+        renderer.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
+        renderer.clear();
 
         // Render the current frame
         let current_clip: Rect = clips[ frame % WALKING_FRAMES ];
-        sprite_sheet.render_to(&mut context,
-                               (WIDTH - current_clip.w) / 2,
-                               (HEIGHT - current_clip.h) / 2,
+        sprite_sheet.render_to(&mut renderer,
+                               ((WIDTH - current_clip.width()) / 2) as i32,
+                               ((HEIGHT - current_clip.height()) / 2) as i32,
                                Some(current_clip));
         
         // Update the screen
-        context.present();
+        renderer.present();
 
         // Increment the frame
         frame += 1;
@@ -203,6 +200,6 @@ fn main() {
 
         // This isn't in the tutorial, but we're going to pause 100ms
 		// to give the animation a more graceful, smooth cadence
-		sdl2::timer::delay(100);
+		std::thread::sleep(Duration::from_millis(100));
     }
 }
