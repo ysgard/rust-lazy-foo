@@ -1,6 +1,4 @@
 extern crate sdl2;
-extern crate sdl2_image;
-extern crate sdl2_ttf;
 
 use std::path::Path;
 
@@ -12,9 +10,9 @@ use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
 
-use sdl2_image::{LoadSurface, INIT_PNG};
+use sdl2::image::{LoadSurface, INIT_PNG, Sdl2ImageContext};
 
-use sdl2_ttf::{Sdl2TtfContext, Font};
+use sdl2::ttf::{Sdl2TtfContext, Font};
 
 const WIDTH:  u32 = 640;
 const HEIGHT: u32 = 480;
@@ -137,7 +135,7 @@ fn load_media(renderer: &Renderer, ttf: &Sdl2TtfContext) -> LTexture {
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
 // Ugh, the SDL font context name!
-fn init() -> (Sdl, Window, Sdl2TtfContext)  {
+fn init() -> (Sdl, Window, Sdl2ImageContext, Sdl2TtfContext)  {
     let sdl = sdl2::init().expect("Could not initialize SDL!");
     let video = sdl.video().expect("Could not acquire video context!");
     let win = video.window("SDL Tutorial 16", WIDTH, HEIGHT)
@@ -146,16 +144,16 @@ fn init() -> (Sdl, Window, Sdl2TtfContext)  {
         .build()
         .expect("Could not create SDL window!");
 
-    sdl2_image::init(INIT_PNG).expect("Could not initialize sdl2_image!");
-    let ttf = sdl2_ttf::init().expect("Could not initialize sdl2_ttf!");
+    let image = sdl2::image::init(INIT_PNG).expect("Could not initialize sdl2_image!");
+    let ttf = sdl2::ttf::init().expect("Could not initialize sdl2_ttf!");
     
-    (sdl, win, ttf)
+    (sdl, win, image, ttf)
 }
 
 fn main() {
 
     // Initialize SDL2
-    let (sdl_context, window, ttf_context) = init();
+    let (sdl_context, window, _image, ttf_context) = init();
 
     // obtain the renderer
     let mut renderer = window.renderer().build()

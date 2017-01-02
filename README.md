@@ -7,6 +7,11 @@ the Rust wrappers kindly provided by the following awesome people:
 
 + SDL2:
 [AngryLawyer's rust-sdl2](https://github.com/AngryLawyer/rust-sdl2)
+
+The examples assume 0.27.2 at a minimum.
+
+## NB: As of rust-sdl2 0.27.2 these two libraries have been rolled
+## into rust-sdl2, and are no longer needed.
 + SDL2_image:
 [xsleonard's rust-sdl2_image](https://github.com/xsleonard/rust-sdl2_image)
 + SDL2_ttf:
@@ -80,13 +85,13 @@ anything for mobile.
 
 To run any of these examples, you will need two things:
 
-1. The [nightly build](http://www.rust-lang.org/install.html) of Rust.  The
-stable 1.0 build will likely work for the majority of these examples,
-but I think I used a few unstable features here and there.
+1. The [nightly build](http://www.rust-lang.org/install.html) of
+   Rust. Some of these examples use features that still aren't in
+   stable (as of 1.14)
 
-2. [The SDL2 Development libraries](https://www.libsdl.org/download-2.0.php).  
-You will also need the image library, [SDL_Image 2.0](https://www.libsdl.org/projects/SDL_image/);
-and the truetype library, [SDL_TTF 2.0](https://www.libsdl.org/projects/SDL_ttf/).
+2. [The SDL2 Development libraries](https://www.libsdl.org/download-2.0.php). You
+will also need the image library, [SDL_Image 2.0](https://www.libsdl.org/projects/SDL_image/); and the truetype
+library, [SDL_TTF 2.0](https://www.libsdl.org/projects/SDL_ttf/).
 
 On OS X, you can use Homebrew:
 

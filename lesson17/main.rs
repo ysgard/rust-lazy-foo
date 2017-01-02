@@ -1,26 +1,26 @@
 extern crate sdl2;
-extern crate sdl2_image;
 
 use std::path::Path;
 
 use sdl2::Sdl;
-use sdl2::video::{Window, WindowPos, OPENGL};
-use sdl2::render::{RenderDriverIndex, ACCELERATED, Renderer, RenderDrawer, Texture, BlendMode};
-use sdl2::surface::{Surface};
+use sdl2::video::Window;
+use sdl2::render::{Renderer, Texture};
+use sdl2::surface::Surface;
 use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
+use sdl2::mouse::{MouseState};
 
-use sdl2_image::{LoadSurface, INIT_PNG};
+use sdl2::image::{LoadSurface, INIT_PNG, Sdl2ImageContext};
 
-const WIDTH:  i32 = 640;
-const HEIGHT: i32 = 480;
+const WIDTH:  u32 = 640;
+const HEIGHT: u32 = 480;
 
-const BUTTON_WIDTH: i32 = 300;
-const BUTTON_HEIGHT: i32 = 200;
-const TOTAL_BUTTONS: i32 = 4;
+const BUTTON_WIDTH: u32 = 300;
+const BUTTON_HEIGHT: u32 = 200;
+const TOTAL_BUTTONS: u32 = 4;
 
-const BUTTON_SPRITESHEET: &'static str = "button.png"; 
+const BUTTON_SPRITESHEET: &'static str = "resources/button.png"; 
 
 // Rust enums are powerful, allowing you to create algebraic data types,
 // but in the simplest case they can be used like C enums.
@@ -34,7 +34,7 @@ enum LButtonSprite {
     ButtonSpriteMouseOverMotion,
     ButtonSpriteMouseDown,
     ButtonSpriteMouseUp,
-    ButtonSpriteTotal,
+    //ButtonSpriteTotal,
 }
 
     
@@ -43,8 +43,8 @@ struct LTexture {
     // The actual texture.
     texture: Texture,
     // Image dimensions
-    width: i32,
-    height: i32
+    width: u32,
+    height: u32
 }
 
 // Note the use of the #[allow(dead_code)] which turns off
@@ -63,25 +63,20 @@ impl LTexture {
         }
     }
 
-    // create a copy of 
-
     // Load a texture from a file
-    fn new_from_file(ren: &Renderer, path: &Path) -> LTexture {
+    fn new_from_file(renderer: &Renderer, path: &Path) -> LTexture {
         // Load the surface first, so we can set the color key
-        let surface = match Surface::from_file(path) {
-            Ok(surface) => surface,
-            Err(err)    => panic!("Could not load surface: {}", err)
-        };
+        let mut surface = Surface::from_file(path)
+            .expect("Could not load surface from file!");
 
         // Now set the color key on the surface
-        surface.set_color_key(true, Color::RGB(0, 0xff, 0xff)).unwrap();
+        surface.set_color_key(true, Color::RGB(0, 0xff, 0xff))
+            .expect("Could not set color key on surface!");
 
         // Convert the surface to a texture and pass it to
         // LTexture::new to be wrapped
-        let tex = match ren.create_texture_from_surface(&surface) {
-            Ok(texture) => texture,
-            Err(err)    => panic!("Could not convert surface to texture: {}", err)
-        };
+        let tex = renderer.create_texture_from_surface(&surface)
+            .expect("Could not create texture from surface!");
         LTexture::new(tex)
     }
 
@@ -92,40 +87,40 @@ impl LTexture {
     // going to wrap rotation and flipping args in Option<> so we can
     // provide None when we don't care about it.
     fn render_to(&self,
-                 context: &mut RenderDrawer,
+                 renderer: &mut Renderer,
                  x: i32,
                  y: i32,
                  clip: Option<Rect>,
                  rotation: Option<f64>,
                  center: Option<Point>,
-                 flip: Option<(bool, bool)>
-                 ) {
+                 flip_h: bool,
+                 flip_v: bool
+    ) {
         let clip_rect = match clip {
             Some(rect) => rect,
-            None       => Rect {x: 0, y: 0, w: self.width, h: self.height }
+            None       => Rect::new(0, 0, self.width, self.height)
         };
         let rot: f64 = match rotation {
             Some(rot) => rot,
             None      => 0.0
         };
-        let flip = match flip {
-            Some((flip_v, flip_h)) => (flip_v, flip_h),
-            None                 => (false, false)
-        };
         
-        context.copy_ex(&self.texture,
+        renderer.copy_ex(&self.texture,
                         Some(clip_rect),
-                        Some(Rect { x: x, y: y, w: clip_rect.w, h: clip_rect.h}),
+                        Some(Rect::new(x, y,
+                                       clip_rect.width(),
+                                       clip_rect.height())),
                         rot,
                         center,
-                        flip);            
+                        flip_h,
+                        flip_v).unwrap();            
     }
 
     // Modulate the LTexture using a Color - this will 'tint' the texture
     // Note that LTextures are immutable, so we have to create a new one
     // and return it - we can't mutate ourselves.
     fn set_color(&mut self, color: Color) {
-        let (r, g, b) = color.get_rgb();
+        let (r, g, b) = color.rgb();
         self.texture.set_color_mod(r, g, b);
     }
 
@@ -134,27 +129,20 @@ impl LTexture {
         self.texture.set_alpha_mod(alpha);
     }
 
-    // Didn't see it in earlier lessons, doesn't seem to be used here, including for completeness
-    fn set_blend_mode(&mut self, blend: BlendMode) {
-        self.texture.set_blend_mode(blend);
-    }
-
     // We only include this function if sdl2_ttf is used
     #[cfg(sdl2_ttf)]
     fn load_from_rendered_text(renderer: &Renderer, font: &Font, text: &str, color: Color) -> LTexture {
-        let text_surface: Surface = match font.render_str_solid(text, color) {
-            Ok(surface) => surface,
-            Err(e)      => panic!("Error! Could not create text surface: {}", e)
-        };
+        let text_surface: Surface = font.render(text)
+            .solid(color)
+            .expect("Could not create text surface!");
         // Now create a texture from the surface using the supplied renderer
-        let text_texture = match renderer.create_texture_from_surface(&text_surface) {
-            Ok(texture) => texture,
-            Err(e)      => panic!("Could not texturize text surface: {}", e)
-        };
+        let text_texture = renderer.create_texture_from_surface(&text_surface)
+            .expect("Could not convert text surface to texture!");
         // Return an LTexture using the given text_texture
         LTexture::new(text_texture)
     }
 }
+
 
 
 // Create a struct that will be used to track mouse data
@@ -162,7 +150,8 @@ struct LButton {
     // Current position of the mouse
     position: Point,
     // Currently used sprite
-    current_sprite: LButtonSprite, 
+    current_sprite: LButtonSprite,
+    pressed: bool,
 }
 
 
@@ -172,59 +161,67 @@ impl LButton {
 
     // Return a newly initialized LButton (not really needed)
     fn new() -> LButton {
-        LButton{ position: Point{ x: 0, y: 0 },
-                 current_sprite: LButtonSprite::ButtonSpriteMouseOut}
+        LButton{ position: Point::new(0, 0),
+                 current_sprite: LButtonSprite::ButtonSpriteMouseOut,
+                 pressed: false }
     }
 
     // Create a new LButton with an initial point
     fn new_from_point(p: Point) -> LButton {
-        LButton{ position: p, current_sprite:  LButtonSprite::ButtonSpriteMouseOut }
+        LButton{ position: p,
+                 current_sprite:  LButtonSprite::ButtonSpriteMouseOut,
+                 pressed: false }
     }
 
     // Set the position
     fn set_position(&mut self, x: i32, y: i32) {
-        self.position = Point{ x: x, y: y };
+        self.position = Point::new(x, y);
     }
 
     // Handle a mouse event. 
-    fn handle_event(&mut self, e: &Event) {
+    fn handle_event(&mut self, s: &MouseState) {
         // The LazyFoo tutorial uses the 'SDL_GetMouseState()' function to
-        // obtain the x, y coordinates.  You may ask why we just don't access the
-        // x & y coords inside the event itself.  The problem is that we'd have to
-        // unwrap the event first, and pattern match on three different types of
-        // events: MouseMotion, MouseButtonUp and MouseButtonDown.  It's definitely
-        // doable, but simpler just to call get_mouse_state.
-        let (_, x, y) = sdl2::mouse::get_mouse_state();
+        // obtain the x, y coordinates.  That would require passing the event pump
+        // into the function, so we simplify things a little bit by acquiring the
+        // mouse state in the main game loop and passing in the state to handle_event
  
         // Check to see if the mouse is inside the button
-        if (x < self.position.x) ||
-            (x > self.position.x + BUTTON_WIDTH) ||
-            (y < self.position.y) ||
-            (y > self.position.y + BUTTON_HEIGHT) {
+        if (s.x() < self.position.x()) ||
+            (s.x() > self.position.x() + BUTTON_WIDTH as i32) ||
+            (s.y() < self.position.y()) ||
+            (s.y() > self.position.y() + BUTTON_HEIGHT as i32) {
                 self.current_sprite = LButtonSprite::ButtonSpriteMouseOut;
             }
         else {
-            self.current_sprite = match *e {
-                Event::MouseButtonDown {..} => LButtonSprite::ButtonSpriteMouseDown,
-                Event::MouseButtonUp {..} => LButtonSprite::ButtonSpriteMouseUp,
-                // If it's not an up or down button, it's just motion
-                _ => LButtonSprite::ButtonSpriteMouseOverMotion
+            self.current_sprite = match s.left() {
+                true => {
+                    self.pressed = true;
+                    LButtonSprite::ButtonSpriteMouseDown
+                },
+                false => {
+                    if self.pressed == true {
+                        LButtonSprite::ButtonSpriteMouseUp
+                    } else {
+                        LButtonSprite::ButtonSpriteMouseOverMotion
+                    }
+                }
             }
         }
     }
 
     // Render a button.  In order to do this, we need the SDL context
     // as well as the LTexture for the button.
-    fn render(&self, context: &mut RenderDrawer, texture: &LTexture, clips: &Vec<Rect>) {
+    fn render(&self, renderer: &mut Renderer, texture: &LTexture, clips: &Vec<Rect>) {
         // This is why we need to derive the Copy trait for the enum.
         let indx = self.current_sprite as usize;
-        texture.render_to(context,
-                          self.position.x,
-                          self.position.y,
+        texture.render_to(renderer,
+                          self.position.x(),
+                          self.position.y(),
                           Some(clips[indx]),
                           None,
                           None,
-                          None);
+                          false,
+                          false);
     }
 }
     
@@ -245,7 +242,7 @@ fn load_media(renderer: &Renderer) -> (LTexture, Vec<Rect>) {
     let mut clip_rects: Vec<Rect> = Vec::new();
     // Create an array of clip rects
     for i in 0..TOTAL_BUTTONS {
-        clip_rects.push(Rect{ x: 0, y: i * 200, w: BUTTON_WIDTH, h: BUTTON_HEIGHT });
+        clip_rects.push(Rect::new(0, i as i32 * 200, BUTTON_WIDTH, BUTTON_HEIGHT));
     }
     (button_sprite, clip_rects)
 }
@@ -258,54 +255,48 @@ fn initialize_buttons() -> [LButton; 4] {
     // Instead, just initialize them from scratch.
     [
         LButton::new(),
-        LButton::new_from_point(Point{ x: WIDTH - BUTTON_WIDTH, y: 0 }),
-        LButton::new_from_point(Point{ x: 0, y: HEIGHT - BUTTON_HEIGHT }),
-        LButton::new_from_point(Point{ x: WIDTH - BUTTON_WIDTH, y: HEIGHT - BUTTON_HEIGHT }),
-        ]
+        LButton::new_from_point(Point::new((WIDTH - BUTTON_WIDTH) as i32, 0)),
+        LButton::new_from_point(Point::new(0, (HEIGHT - BUTTON_HEIGHT) as i32)),
+        LButton::new_from_point(Point::new((WIDTH - BUTTON_WIDTH) as i32,
+                                           (HEIGHT - BUTTON_HEIGHT) as i32))
+    ]
 }
 
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
-fn init() -> (Sdl, Window)  {
-    let sdl = sdl2::init(sdl2::INIT_VIDEO).unwrap();
-    let win = match Window::new(&sdl, "SDL Tutorial",
-                      WindowPos::PosCentered,
-                      WindowPos::PosCentered,
-                      WIDTH, HEIGHT, OPENGL) {
-        Ok(window) => window,
-        Err(err)   => panic!("Failed to create Window!: {}", err)
-    };
+fn init() -> (Sdl, Window, Sdl2ImageContext)  {
 
-    sdl2_image::init(INIT_PNG);
-    // sdl2_ttf::init();
+    let sdl = sdl2::init().expect("Unable to initialize SDL!");
+    let video = sdl.video().expect("Could not acquire video context!");
+    let win = video.window("SDL Tutorial 17", WIDTH, HEIGHT)
+        .position_centered()
+        .opengl()
+        .build()
+        .expect("Could not create SDL window!");
+                      
+
+    let image = sdl2::image::init(INIT_PNG).expect("Unable to initialize sdl2_image!");
     
-    (sdl, win)
+    (sdl, win, image)
 }
 
 fn main() {
 
     // Initialize SDL2
-    let (sdl_context, window) = init();
+    let (sdl_context, window, _image) = init();
 
     // obtain the renderer
-    let mut renderer = match Renderer::from_window(window,
-                                                   RenderDriverIndex::Auto,
-                                                   ACCELERATED) {
-        Ok(renderer) => renderer,
-        Err(err)     => panic!("Could not obtain renderer: {}", err)
-    };
+    let mut renderer = window.renderer().build()
+        .expect("Unable to obtain renderer!");
 
     let (button_texture, clip_rects) = load_media(&renderer);
     let mut buttons = initialize_buttons();
             
-    let mut context = renderer.drawer();
-    
-    // running is 'mut' because we will want to 'flip' it to false when
-    // we're ready to exit the game loop.
     let mut running: bool = true;
 
     // Get a handle to the SDL2 event pump
-    let mut event_pump = sdl_context.event_pump();
+    let mut event_pump = sdl_context.event_pump()
+        .expect("Unable to obtain event pump handle!");
 
     // game loop
     while running {
@@ -318,33 +309,45 @@ fn main() {
                 // Note that unlike the tutorial, we actually check it's
                 // a mouse event before handing it off.  Otherwise in an
                 // actual program we'd be sending non-mouse events into limbo.
-                Event::MouseMotion {..} |
-                Event::MouseButtonDown {..} |
-                Event::MouseButtonUp {..} => {
-                    for i in 0..TOTAL_BUTTONS {
-                        buttons[i as usize].handle_event(&event);
-                    }
-                },      
+                // UPDATE: This is the old way of doing it.  Now mouse events
+                // are not generated events - instead you pull the status of
+                // the mouse right from the event pump (see below).
+                
+                // Event::MouseMotion {..} |
+                // Event::MouseButtonDown {..} |
+                // Event::MouseButtonUp {..} => {
+                //     for i in 0..TOTAL_BUTTONS {
+                //         buttons[i as usize].handle_event(&event);
+                //     }
+                // },      
                 Event::Quit {..} => {
                     running = false
                 },
                 _ => {}
             }
         }
+
+        // Check the mouse state, & dispatch it to the buttons
+        let state = event_pump.mouse_state();
+        for i in 0..TOTAL_BUTTONS {
+            buttons[i as usize].handle_event(&state);
+        }
+
+        // Check the 
         // Clear and render the texture each pass through the loop
-        context.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
-        context.clear();
+        renderer.set_draw_color(Color::RGB(0xff, 0xff, 0xff));
+        renderer.clear();
 
         // Render the buttons
         // We don't have globals and LButton does not store the button texture,
         // so we need to pass it and the context.
         for i in 0..TOTAL_BUTTONS {
-            buttons[i as usize].render(&mut context,
+            buttons[i as usize].render(&mut renderer,
                                      &button_texture,
                                      &clip_rects);
         }
 
         // Update the screen
-        context.present();
+        renderer.present();
     }
 }

@@ -1,5 +1,4 @@
 extern crate sdl2;
-extern crate sdl2_image;
 
 use std::path::Path;
 
@@ -11,8 +10,7 @@ use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
 
-
-use sdl2_image::{LoadSurface, INIT_PNG};
+use sdl2::image::{LoadSurface, INIT_PNG, Sdl2ImageContext};
 
 const WIDTH:  u32 = 640;
 const HEIGHT: u32 = 480;
@@ -97,7 +95,7 @@ impl LTexture {
     
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
-fn init() -> (Sdl, Window)  {
+fn init() -> (Sdl, Window, Sdl2ImageContext)  {
     let sdl = sdl2::init().unwrap();
     let video = sdl.video().unwrap();
     let win = match video.window("SDL Tutorial 10", WIDTH, HEIGHT)
@@ -108,16 +106,16 @@ fn init() -> (Sdl, Window)  {
             Err(err)   => panic!("Failed to create Window!: {}", err)
         };
 
-    sdl2_image::init(INIT_PNG).unwrap();
+    let image = sdl2::image::init(INIT_PNG).unwrap();
     
-    (sdl, win)
+    (sdl, win, image)
 }
 
 
 fn main() {
 
     // Initialize SDL2
-    let (sdl_context, window) = init();
+    let (sdl_context, window, _image) = init();
 
     // obtain the renderer
     let mut renderer = match window.renderer().build() {

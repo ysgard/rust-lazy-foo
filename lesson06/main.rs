@@ -1,12 +1,10 @@
 extern crate sdl2;
-extern crate sdl2_image;
 
 use sdl2::Sdl;
 use sdl2::video::Window;
-use sdl2::render::Renderer;
 use sdl2::event::Event;
 
-use sdl2_image::{INIT_PNG, INIT_JPG, LoadTexture};
+use sdl2::image::{INIT_PNG, INIT_JPG, LoadTexture, Sdl2ImageContext};
 
 use std::path::Path;
 
@@ -16,7 +14,7 @@ const HEIGHT: u32 = 480;
 
 /// Break out initialization into a separate function, which
 /// returns only the Window (we don't need the sdl_context)
-fn init() -> (Sdl, Window)  {
+fn init() -> (Sdl, Window, Sdl2ImageContext)  {
     let sdl = sdl2::init().unwrap();
     let video = sdl.video().unwrap();
     // Create the window
@@ -28,17 +26,19 @@ fn init() -> (Sdl, Window)  {
             Err(err)   => panic!("Failed to create Window!: {}", err)
     };
 
-    // Initialize SDL2_Image.  It doesn't return anything.
-    // We're not using a jpg, but init it anyway to show flag joining.
-    sdl2_image::init(INIT_PNG | INIT_JPG);
+    // As of rust-sdl2 0.27.2, SDL2_IMAGE is now part of the core
+    // crate.  So initialize a context for it.  The context by
+    // itself is pretty useless, but we need to keep it alive
+    // until we're done with it.
+    let image = sdl2::image::init(INIT_PNG | INIT_JPG).unwrap();
     
-    (sdl, win)
+    (sdl, win, image)
 }
 
 fn main() {
 
     // Initialize SDL2
-    let (sdl_context, window) = init();
+    let (sdl_context, window, _image) = init();
     
     let mut renderer = match window.renderer().build() {
         Ok(renderer) => renderer,
@@ -72,7 +72,7 @@ fn main() {
         }
         // Clear and render the texture each pass through the loop
         renderer.clear();
-        renderer.copy(&image_texture, None, None);
+        renderer.copy(&image_texture, None, None).unwrap();
         renderer.present();
     }
 }

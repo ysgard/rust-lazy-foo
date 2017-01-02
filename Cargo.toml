@@ -67,7 +67,11 @@ path = "lesson15/main.rs"
 name = "lesson16"
 path = "lesson16/main.rs"
 
-[dependencies]
-sdl2 = ">= 0.25.0"
-sdl2_image = ">= 0.25.0"
-sdl2_ttf = ">= 0.25.1"
+[[bin]]
+name = "lesson17"
+path = "lesson17/main.rs"
+
+[dependencies.sdl2]
+version = "0.27.2"
+default-features = false
+features = ["image", "ttf"]
