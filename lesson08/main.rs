@@ -1,3 +1,4 @@
+#![feature(iterator_step_by)]
 #![feature(step_by)]
 extern crate sdl2;
 
